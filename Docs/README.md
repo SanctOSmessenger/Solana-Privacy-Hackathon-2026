@@ -5,7 +5,7 @@ This repo exposes a **browser SDK facade** on top of the SanctOS Messenger runti
 It’s designed for hackathon-speed integrations: other web apps can **discover peers**, **sync & decrypt messages**, and **send messages** on Solana using a self-sovereign, key-based identity model.
 
 **SDK entrypoint:** `window.sanctos.api`  
-**Current SDK version:** `0.2.1`
+**Current SDK version:** `0.2.0`
 
 ---
 

@@ -1,0 +1,29 @@
+name = "sanctos-rpc-node"
+main = "worker.js"
+compatibility_date = "2025-11-25"
+
+[vars]
+SANCTOS_CACHE_ALL = "0"
+SANCTOS_DEFAULT_TTL = "3"
+SANCTOS_STALE_WINDOW = "60"
+SANCTOS_STALE_FALLBACK_ON_ERROR = "1"
+SANCTOS_CACHE_SYNC_WRITE = "1"
+
+
+ALLOW_ORIGINS = "https://messenger.sanctos.app,http://localhost:8091,http://localhost:3000"
+EXPOSE_HEADERS = "x-sanctos-cache,x-sanctos-upstream-name,x-sanctos-upstream-status,x-sanctos-upstream,x-sanctos-worker-build,x-sanctos-instance,x-sanctos-indexer,x-sanctos-indexer-status"
+
+UPSTREAM_ALIASES = "quicknode 1,helius 1"
+UPSTREAM_SECRET_KEYS = "UPSTREAM_QUICKNODE_1_URL,UPSTREAM_HELIUS_1_URL"
+
+INDEXER_URL = "https://indexer.sanctos.app"
+INDEXER_ENABLED = "true"
+INDEXER_TIMEOUT_MS = "2500"
+
+[[durable_objects.bindings]]
+name = "SANCTOS_STATS"
+class_name = "SanctosStatsDO"
+
+[[migrations]]
+tag = "sanctos-stats-v1"
+new_classes = ["SanctosStatsDO"]
