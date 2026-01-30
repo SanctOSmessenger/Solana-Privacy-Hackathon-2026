@@ -1,0 +1,87 @@
+body {
+    margin: 0;
+    background: transparent;
+    font-family: "JetBrains Mono", monospace;
+    color: #fff;
+    user-select: none;
+  }
+  
+  #widget {
+    background: rgba(20, 20, 30, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    width: 220px;
+    height: auto;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+  
+  #header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: move;
+    margin-bottom: 8px;
+  }
+  
+  #toggle-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 6px;
+    transition: background 0.2s ease;
+  }
+  
+  #toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  #prices div {
+    margin: 3px 0;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .green {
+    color: #3aff7a;
+  }
+  
+  .red {
+    color: #ff4e4e;
+  }
+  @keyframes sanctos-pulse {
+    0% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.5; transform: scale(1); }
+  }
+  
+  .msg-status {
+    font-size: 11px;
+    margin-left: 4px;
+    opacity: 0.8;
+    display: inline-block;
+    transition: color 0.3s ease, transform 0.2s ease;
+  }
+  
+  .chat-message[data-status="pending"] .msg-status {
+    color: #ffcf40;
+    animation: sanctos-pulse 1.2s infinite ease-in-out;
+  }
+  
+  .chat-message[data-status="confirmed"] .msg-status {
+    color: #3aff7a;
+    animation: none;
+  }
+  
+  .chat-message[data-status="failed"] .msg-status {
+    color: #ff5555;
+    animation: none;
+  }
+  

@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SanctOS - Decentralized Messenger</title>
+
+  <link rel="icon" type="image/png" href="assets/icons/sanctos.png" />
+  <link rel="apple-touch-icon" href="assets/icons/sanctos.png" />
+
+  <style>
+    :root { --scale: 1; }
+
+    /* =========================
+       FULL-PAGE BASE (NO WHITE)
+       ========================= */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+      background: #0b0b0c;
+      color: #c4c4c4;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    /* ✅ FULLSCREEN: stop centering + stop “page padding” creating dead space */
+    body {
+      display: block;            /* was flex+centered */
+      padding: 0;               /* was 10px */
+      box-sizing: border-box;
+    }
+
+    /* ✅ Smooth fade + height collapse for widgets */
+    .fade-toggle {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .fade-toggle.hidden {
+      opacity: 0;
+      transform: scale(0.97);
+      pointer-events: none;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* =========================
+       WIDGET BASE (RESTORED)
+       ========================= */
+    .widget {
+      -webkit-app-region: no-drag;
+      width: min(95%, 460px);
+      max-width: 460px;
+      background: linear-gradient(145deg, #2c2c2c, #1b1b1b);
+      padding: calc(14px * var(--scale));
+      border-radius: calc(12px * var(--scale));
+      border: 1px solid transparent;
+      box-shadow: 0 calc(8px * var(--scale)) calc(20px * var(--scale)) rgba(0,0,0,0.5);
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.25s ease;
+      box-sizing: border-box;
+    }
+
+    .bottom-controls {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+      -webkit-app-region: no-drag;
+    }
+
+    .ctrl-circle {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #51f051;
+      box-shadow: inset 0 0 2px rgba(0,0,0,0.6);
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+    .ctrl-circle.off { background: #e94040; }
+    .ctrl-circle:hover { transform: scale(1.2); }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(145deg, #3d3d3d, #2b2b2b);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+      overflow: visible;
+      margin-top: 14px;
+    }
+
+    .total-balance {
+      text-align: center;
+      font-size: calc(1.4rem * var(--scale));
+      font-weight: 800;
+      background: linear-gradient(90deg, #edacf4, #d38eea);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: calc(8px * var(--scale));
+      letter-spacing: 0.8px;
+      text-shadow: 0 0 6px rgba(237,172,244,0.5);
+    }
+
+    /* =========================
+       ✅ PRICE ROW STYLES (RESTORED)
+       ========================= */
+    .price {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 6px;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      white-space: nowrap;
+      padding: 3px 0;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+    }
+
+    .price .logo {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      display: inline-block;
+      opacity: 0.95;
+    }
+
+    .price span.symbol { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .price span.priceVal {
+      text-align: right;
+      justify-self: end;
+      min-width: 60px;
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .price span.diff {
+      text-align: right;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 6px;
+      min-width: 50px;
+      max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.18s ease;
+    }
+
+    .green { color: #00ff00; }
+    .yellow { color: #f0ff00; }
+    .red { color: #ff5555; }
+
+    .price.expanded {
+      transform: scale(1.05);
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 4px;
+      padding: 6px 0;
+    }
+    .price.expanded .symbol {
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.3rem;
+    }
+    .price.expanded .priceVal,
+    .price.expanded .diff {
+      display: block;
+      font-size: 1rem;
+    }
+
+    .price .remove-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      display: none;
+      cursor: pointer;
+      font-weight: bold;
+      color: #ff5555;
+      background: transparent;
+      border: none;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .price.expanded .remove-btn { display: block; }
+
+    .controls {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .ticker-input {
+      flex-shrink: 1;
+      width: 60px;
+      min-width: 50px;
+      height: 22px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #edacf4;
+      background: #1b1b1b;
+      color: #edacf4;
+      padding: 2px 5px;
+      text-transform: uppercase;
+      font-family: 'Courier New', monospace;
+      display: none;
+      box-sizing: border-box;
+    }
+
+    .add-btn, .reset-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #ededed, #cfcfcf);
+      color: #121212;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      line-height: 20px;
+      text-align: center;
+      padding: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      -webkit-app-region: no-drag;
+    }
+
+    .wallet-manager {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .wallet-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      color: #d9d9d9;
+      max-height: 120px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      -webkit-app-region: no-drag;
+    }
+
+    .wallet-list-item {
+      background: rgba(255,255,255,0.04);
+      border-radius: 4px;
+      padding: 4px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .wallet-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: auto;
+      -webkit-app-region: no-drag;
+    }
+
+    .wallet-input {
+      flex: 1;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: #1b1b1b;
+      color: #fff;
+      font-size: 12px;
+      padding: 2px 6px;
+      font-family: 'Courier New', monospace;
+      box-sizing: border-box;
+      -webkit-app-region: no-drag;
+    }
+
+    .wallet-btn {
+      height: 24px;
+      border-radius: 4px;
+      border: none;
+      background: linear-gradient(145deg, #ededed, #cfcfcf);
+      color: #121212;
+      font-weight: bold;
+      font-size: 10.5px;
+      cursor: pointer;
+      padding: 0 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      transition: filter 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+    .wallet-btn:hover { filter: brightness(1.1); }
+
+    .empty-placeholder {
+      color: #bfbfbf;
+      font-size: 12px;
+      padding: 8px 0;
+      text-align: center;
+      word-break: break-word;
+      -webkit-app-region: no-drag;
+    }
+
+  /* =========================
+     CHAT WIDGET (KEEP CARD LOOK, FULL HEIGHT)
+     ========================= */
+     .chat-widget {
+    display: flex;
+    flex-direction: column;
+
+    /* keep your card styling */
+    width: 100%;
+    max-width: 720px;
+
+    /* ✅ fullscreen height (remove 420px) */
+    height: 100%;
+
+    background: linear-gradient(145deg, #2b2b2b, #1a1a1a);
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    -webkit-app-region: no-drag;
+    box-sizing: border-box;
+  }
+
+  .chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px 8px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    -webkit-app-region: drag;
+  }
+
+  .chat-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    color: #d6b6ff;
+  }
+
+  .phantom-btn {
+    -webkit-app-region: no-drag;
+    background: linear-gradient(145deg, #cfa3ff, #9d77f0);
+    border: none;
+    color: #121212;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .phantom-btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 8px rgba(207,163,255,0.4);
+  }
+
+  .chat-body {
+    flex: 1;
+    display: flex;
+    height: 100%;
+    margin-top: 6px;
+    overflow: hidden;
+    min-height: 0;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-list {
+    width: 35%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding-right: 6px;
+    min-height: 0;
+  }
+
+/* =========================
+   ✅ SECTION ROW (Contacts-style)
+   ========================= */
+   .section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 6px 2px;
+  -webkit-app-region: no-drag;
+}
+
+.section-title {
+  font-weight: 700;     /* match Contacts span */
+  opacity: .9;          /* match Contacts span */
+  font-size: 14px;      /* closer to Contacts row visual size */
+  letter-spacing: 0.3px;
+  color: #c4c4c4;
+}
+
+
+.section-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Make the action buttons match your existing "add-btn" look */
+.section-actions .section-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(145deg, #ededed, #cfcfcf);
+  color: #121212;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  -webkit-app-region: no-drag;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.section-actions .section-btn:hover {
+  filter: brightness(1.08);
+  transform: scale(1.05);
+}
+
+.section-actions .section-btn.active {
+  filter: brightness(1.0);
+  box-shadow: 0 0 0 2px rgba(180,130,255,0.25), 0 1px 4px rgba(0,0,0,0.35);
+}
+
+/* Search wrapper stays the same; we just want it to hide nicely */
+#chat-search-wrap { -webkit-app-region: no-drag; }
+
+
+  /* Search bar wrapper so we can hide it cleanly */
+  .chat-search {
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-search input {
+    width: 100%;
+    height: 26px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background: #1c1c1c;
+    color: #eee;
+    padding: 3px 6px;
+    font-size: 12px;
+    margin-bottom: 6px;
+    -webkit-app-region: no-drag;
+  }
+
+  .conversations {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    -webkit-app-region: no-drag;
+  }
+
+  .conversation {
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    -webkit-app-region: no-drag;
+  }
+  .conversation:hover { background: rgba(255,255,255,0.12); }
+  .conversation.active {
+    background: rgba(160,100,255,0.25);
+    border: 1px solid rgba(180,130,255,0.3);
+  }
+
+  .chat-window {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(145deg, #343434, #232323);
+    border-radius: 8px;
+    margin-left: 8px;
+    padding: 8px;
+    min-height: 0;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 6px;
+    min-height: 0;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-message {
+    max-width: 75%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: pre-wrap;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-message.sent {
+    align-self: flex-end;
+    background: linear-gradient(145deg, #b883f6, #8f66e6);
+    color: #121212;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+
+  .chat-message.received {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.07);
+    color: #eee;
+  }
+
+  .chat-input-row {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 6px;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-input-row input {
+    flex: 1;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #1b1b1b;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 4px 6px;
+    -webkit-app-region: no-drag;
+  }
+
+  .send-btn {
+    margin-left: 6px;
+    height: 28px;
+    width: 36px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(145deg, #ededed, #cfcfcf);
+    color: #121212;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-app-region: no-drag;
+  }
+  .send-btn:hover { filter: brightness(1.1); }
+
+  .chat-placeholder {
+    color: #aaa;
+    text-align: center;
+    font-size: 12px;
+    margin-top: 10px;
+    opacity: 0.8;
+    -webkit-app-region: no-drag;
+  }
+
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  *::-webkit-scrollbar { display: none; }
+
+  /* =========================
+     FULLSCREEN LAYOUT (KEEP LOOK)
+     ========================= */
+  #sanctos-layout {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;   /* ✅ fill height */
+    justify-content: center;
+
+    gap: 20px;
+
+    /* ✅ controlled fullscreen padding, same aesthetic as your old 10px */
+    padding: 14px;
+    box-sizing: border-box;
+
+    /* remove max-width/margin cap so it’s “fullscreen” */
+    max-width: none;
+    margin: 0;
+    flex-wrap: nowrap;
+  }
+
+  /* Chat column becomes full-height; still respects your “nice width” rules */
+  #chat-widget {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    max-width: 900px;
+    transition: max-width 0.35s ease, transform 0.3s ease;
+  }
+
+  body.trader-active #chat-widget {
+    max-width: 720px;
+    transform: translateX(-6px);
+  }
+
+  /* Trader column behavior unchanged, just full height now */
+  #trader-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    height: 100%;
+    min-height: 0;
+
+    flex: 0 0 0;
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(16px) scale(0.97);
+    pointer-events: none;
+    overflow: hidden;
+
+    transition:
+      flex-basis 0.35s ease,
+      max-width 0.35s ease,
+      opacity 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  body.trader-active #trader-column {
+    flex: 0 0 420px;
+    max-width: 420px;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+    overflow: visible;
+  }
+
+  /* Make trader widgets fit the column cleanly (no “min(95%,460px)” weirdness) */
+  body.trader-active #trader-column .widget {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  @media (max-width: 900px) {
+    #sanctos-layout {
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    #chat-widget { max-width: none; }
+    body.trader-active #trader-column {
+      flex: 0 0 auto;
+      max-width: none;
+      height: auto;
+    }
+    body.trader-active #trader-column .widget {
+      max-width: 720px;
+    }
+  }
+
+  /* =========================================================
+     ✅ CHAT-ONLY FULLSCREEN (DOES NOT AFFECT TRADER MODE)
+     ========================================================= */
+  body:not(.trader-active) #sanctos-layout {
+    padding: 0;
+    gap: 0;
+    justify-content: stretch;
+  }
+
+  body:not(.trader-active) #chat-widget {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    transform: none;
+  }
+
+  body:not(.trader-active) #trader-column {
+    display: none;
+  }
+</style>
+
+<div id="sanctos-layout">
+  <div id="chat-widget" class="widget chat-widget fade-toggle">
+    <div class="chat-header">
+      <span class="chat-title">SanctOS</span>
+      <button id="connect-phantom" class="phantom-btn">🟣 Connect</button>
+    </div>
+
+    <div class="chat-body">
+      <div class="chat-list">
+
+<!-- ✅ NEW: Chats row (Contacts-style) -->
+<div class="section-row">
+  <div class="section-title">Chats</div>
+  <div class="section-actions">
+    <button id="chats-new-btn" class="section-btn" title="New chat">+</button>
+    <button id="chats-search-btn" class="section-btn" title="Search">⌕</button>
+    <button id="chats-trash-btn" class="section-btn" title="Trash">🗑</button>
+  </div>
+</div>
+
+<div class="chat-search" id="chat-search-wrap">
+  <input type="text" id="chat-search" placeholder="Search or start chat..." />
+</div>
+
+
+        <div id="conversations" class="conversations">
+          <div class="chat-placeholder">No conversations yet</div>
+        </div>
+      </div>
+
+      <div class="chat-window">
+        <div id="chat-messages" class="chat-messages">
+          <div class="chat-placeholder">Select or start a conversation</div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Type message..." autocomplete="off" />
+          <button id="send-chat" class="send-btn">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="trader-column" class="fade-toggle">
+    <div id="widget" class="widget fade-toggle hidden">
+      <div id="content" class="content"></div>
+      <div class="controls">
+        <input type="text" id="ticker-input" class="ticker-input" placeholder="Symbol" maxlength="8" />
+        <button id="add-btn" class="add-btn">+</button>
+        <button id="alarm-btn" class="add-btn" title="Manage Alarms">🔔</button>
+        <button id="reset-btn" class="reset-btn" title="Reset">⟳</button>
+      </div>
+
+      <div class="bottom-controls">
+        <div class="ctrl-circle" id="ctrl-1"></div>
+        <div class="ctrl-circle" id="ctrl-2"></div>
+        <div class="ctrl-circle" id="ctrl-3"></div>
+      </div>
+    </div>
+
+    <div id="token-widget" class="widget fade-toggle hidden">
+      <div id="token-content" class="content">
+        <div id="token-empty" class="empty-placeholder">
+          No tokens added — add SPL / ERC20 tickers below
+        </div>
+      </div>
+      <div class="controls">
+        <input type="text" id="token-ticker-input" class="ticker-input" placeholder="Token" maxlength="16" />
+        <button id="token-add-btn" class="add-btn">+</button>
+      </div>
+    </div>
+
+    <div class="widget wallet-manager fade-toggle hidden" id="wallet-manager">
+      <div class="total-balance">
+        TOTAL: <span id="total-usd">$0.00</span>
+      </div>
+
+      <div class="wallet-list" id="wallet-list">
+        <div class="empty-placeholder">No wallets added</div>
+      </div>
+
+      <div class="wallet-row">
+        <select id="network-select" class="wallet-input" style="max-width:90px;">
+          <option value="sol">SOL</option>
+          <option value="eth">ETH</option>
+          <option value="bsc">BSC</option>
+        </select>
+        <input type="text" id="wallet-address" class="wallet-input" placeholder="Wallet Address" />
+        <button id="add-wallet" class="wallet-btn">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function bindChatsToolbar() {
+    const $ = (id) => document.getElementById(id);
+
+    const btnNew = $("chats-new-btn");
+    const btnSearch = $("chats-search-btn");
+    const btnTrash = $("chats-trash-btn");
+    const searchWrap = $("chat-search-wrap");
+    const searchInput = $("chat-search");
+
+    if (!btnNew || !btnSearch || !btnTrash || !searchWrap || !searchInput) return;
+
+    // ---- kill the old injected "＋ New Chat" button (by id + by text) ----
+    function hideLegacyNewChatButtons() {
+      // 1) hard kill by id (your injected legacy uses this id)
+      const legacy = document.getElementById("new-chat-btn");
+      if (legacy) {
+        legacy.style.display = "none";
+        legacy.style.pointerEvents = "none";
+        if (legacy.parentElement) {
+          legacy.parentElement.style.display = "none";
+          legacy.parentElement.style.pointerEvents = "none";
+        }
+      }
+
+      // 2) fallback: text match (covers weird variants)
+      const btns = Array.from(document.querySelectorAll("button"));
+      for (const b of btns) {
+        if (!b) continue;
+        if (b.id === "chats-new-btn" || b.id === "chats-search-btn" || b.id === "chats-trash-btn") continue;
+
+        const t = (b.textContent || "").trim().toLowerCase();
+        if (t.includes("new chat")) {
+          b.style.display = "none";
+          b.style.pointerEvents = "none";
+          if (b.parentElement && (b.parentElement.textContent || "").toLowerCase().includes("new chat")) {
+            b.parentElement.style.display = "none";
+            b.parentElement.style.pointerEvents = "none";
+          }
+        }
+      }
+    }
+
+    hideLegacyNewChatButtons();
+    setTimeout(hideLegacyNewChatButtons, 400);
+    setTimeout(hideLegacyNewChatButtons, 1200);
+    setTimeout(hideLegacyNewChatButtons, 2500);
+
+    const getShowSearch = () => localStorage.getItem("sanctos.showChatSearch") !== "0";
+    const setShowSearch = (v) => localStorage.setItem("sanctos.showChatSearch", v ? "1" : "0");
+
+    const getShowTrash = () => localStorage.getItem("sanctos.showTrashedChats") === "1";
+    const setShowTrash = (v) => localStorage.setItem("sanctos.showTrashedChats", v ? "1" : "0");
+
+    function applySearchVisibility() {
+      const show = getShowSearch();
+      searchWrap.style.display = show ? "" : "none";
+      btnSearch.classList.toggle("active", show);
+    }
+
+    function applyTrashState() {
+      const showTrash = getShowTrash();
+      btnTrash.classList.toggle("active", showTrash);
+
+      if (typeof window.renderConvoList === "function") {
+        try { window.renderConvoList(); } catch {}
+      }
+    }
+
+    applySearchVisibility();
+    applyTrashState();
+
+    btnSearch.addEventListener("click", () => {
+      const next = !getShowSearch();
+      setShowSearch(next);
+      applySearchVisibility();
+      if (next) setTimeout(() => searchInput.focus(), 0);
+    });
+
+    btnTrash.addEventListener("click", () => {
+      setShowTrash(!getShowTrash());
+      applyTrashState();
+    });
+
+    btnNew.addEventListener("click", async () => {
+      // ✅ Use chat.js modal flow if available
+      if (typeof window.sanctosStartNewChatFlow === "function") {
+        try { await window.sanctosStartNewChatFlow(); } catch (e) { console.warn(e); }
+        return;
+      }
+
+      // fallback: open search + focus
+      setShowSearch(true);
+      applySearchVisibility();
+      searchInput.value = "";
+      searchInput.focus();
+    });
+  })();
+</script>
+
+
+
+<script>
+  // Feature flags / globals set BEFORE any app code loads
+  window.sanctosAutoHandshake = true;
+
+  // Lock RPC + network
+  window.__SANCTOS_RPC = "https://sanctos-rpc-node.sanctos.workers.dev";
+  window.__SANCTOS_NET = "mainnet";
+
+  // Program id early
+  window.SANCTOS_PROGRAM_ID_STR = "EBEQdAwgXmyLrj5npwmX63cEZwzrSKgEHy297Nfxrjhw";
+
+  // IMPORTANT: prevent patches.js from auto-injecting SanctOS bundle
+  window.__SANCTOS_DISABLE_AUTOSIGN_BOOT = true;
+</script>
+
+<!-- deps -->
+<script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+<script src="anchor-build/anchor.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/libsodium-wrappers@0.7.11/dist/browsers/sodium.js"></script>
+
+
+<!-- wallet manager -->
+<script src="sanctos.wallet.js"></script>
+
+<!-- chat (defines/attaches window.sanctos hooks) -->
+<script src="chat.obf.js"></script>
+
+<!-- ✅ external public SDK facade (creates window.sanctos.api) -->
+<script src="client/sanctos-sdk.js?v=1"></script>
+
+<!-- widgets -->
+<script src="widget.js"></script>
+<script src="wallet.js"></script>
+
+<!-- patches -->
+<script src="patches.js"></script>
+
+<script>
+  // Warmup config (set BEFORE loading warmup)
+  window.__SANCTOS_DEBUG_WARMUP__ = true;
+  window.SANCTOS_API_WARMUP_MODE = "rpc"; // safest (no sync/decrypt interference)
+</script>
+
+<script
+  src="client/sanctos.warmup.js?v=2"
+  onload="console.log('[SanctOS🔥] warmup loaded', window.__SANCTOS_API_WARMUP_INSTALLED, typeof window.__sanctosWarmupNow)"
+  onerror="console.error('[SanctOS🔥] warmup FAILED to load')"
+></script>
+
+<script>
+  // Optional convenience alias (fine either way)
+  window.sanctosApi = window.sanctosApi || (window.sanctos && window.sanctos.api);
+</script>
